@@ -1,0 +1,568 @@
+default_language: en
+
+languages:
+  - en
+  - ru
+  - lt
+  - pl
+  - lv
+
+translations:
+  en:
+    main_title: "QuickJira – Quick task entry"
+    main_placeholder: |
+      Enter one task per line.
+      Example:
+      New task for work @prj myproject @type task @asg me @due next week
+
+      Supported tags: @prj/@project, @type, @asg/@assignee, @due
+    main_parse: "Parse  [Ctrl+Enter]"
+    main_settings: "Settings..."
+    main_cancel: "Cancel"
+
+    msg_empty_title: "Empty"
+    msg_empty_text: "Enter at least one line."
+    msg_parse_failed_title: "Parse failed"
+    msg_parse_failed_text: "Check the line format."
+    msg_no_settings_title: "No settings"
+    msg_no_settings_text: "Fill Jira settings before creating issues."
+
+    result_title: "Result"
+    result_created: "Created:"
+    result_errors: "Errors:"
+    result_no_actions: "No actions"
+    settings_title: "QuickJira – Settings"
+    jira_url: "Jira URL:"
+    user: "User (email/login):"
+    token: "API Token:"
+    default_project: "Default project:"
+    default_issue_type: "Default issue type:"
+    default_assignee: "Default assignee:"
+    default_due_workdays: "Default workdays (@due):"
+    language: "Language:"
+    check_connection: "Check connection"
+    save: "Save"
+    cancel: "Cancel"
+    connection_fill_required: "Fill Jira URL, User and API Token first."
+    connection_ok_title: "Connection OK"
+    connection_ok_message: "Connected successfully.\nUser: {user}"
+    connection_failed_title: "Connection failed"
+    tray_tooltip: "QuickJira – quick Jira entry"
+    tray_open: "Open input…"
+    tray_settings: "Settings…"
+    tray_about: "About…"
+    tray_quit: "Quit"
+    about_title: "About QuickJira v1.0"
+    about_text: |
+      QuickJira v1.0
+
+      QuickJira is a lightweight Windows system-tray app for creating Jira issues at lightning speed.
+
+      Type one task per line (or a multi-line single task), attach inline tags, review the parsed result, and bulk-create everything in Jira — without ever opening a browser.
+
+  ru:
+    main_title: "QuickJira – Быстрый ввод задач"
+    main_placeholder: |
+      Введите по одной задаче в строке.
+      Пример:
+      Новая задача для работы @prj myproject @type task @asg me @due next week
+
+      Поддерживаемые теги: @prj/@project/@проект, @type/@тип, @asg/@assignee/@исп/@на, @due/@срок/@когда
+    main_placeholder_single: |
+      Введите одну задачу в свободной форме.
+      Первая строка — заголовок. Остальные строки — описание (переносы строк сохраняются).
+      Теги (@prj, @type, @asg, @due) можно указывать на любой строке.
+
+      Пример:
+      Исправить падение при входе
+        Шаги для воспроизведения:
+        1. Открыть приложение и подождать 30 минут
+        2. Попробовать войти
+        @prj MOBILE @type Bug @asg me @due next week
+    main_parse: "Разобрать  [Ctrl+Enter]"
+    main_settings: "Настройки..."
+    main_cancel: "Отмена"
+    main_multi_task: "Несколько задач (по одной на строку)"
+
+    review_title: "Проверка задач"
+    review_create: "Создать в Jira  [Ctrl+Enter]"
+    review_cancel: "Отмена  [Esc]"
+    review_add_to_jira: "Добавить в Jira"
+    review_project: "Проект"
+    review_type: "Тип"
+    review_assignee: "Исполнитель"
+    review_estimate: "Оценка"
+    review_due: "Срок"
+    review_labels: "Метки"
+    review_status_after_create: "Статус после создания"
+
+    settings_tab_task: "Параметры задачи"
+    settings_tab_app: "Параметры приложения"
+    settings_default_labels: "Метки по умолчанию:"
+    settings_default_status: "Статус по умолчанию:"
+    settings_stay_on_top: "Поверх окон:"
+    settings_inactivity_transparency: "Прозрачность при неактивности:"
+    settings_global_hotkey: "Глобальная комбинация клавиш:"
+    settings_hotkey_enable: "Включить глобальную комбинацию"
+    settings_hotkey_shortcut: "Комбинация:"
+    settings_autostart: "Запускать при старте Windows"
+
+    main_quit: "Отмена"
+
+    msg_empty_title: "Пусто"
+    msg_empty_text: "Введите хотя бы одну строку."
+    msg_parse_failed_title: "Не удалось разобрать"
+    msg_parse_failed_text: "Проверьте формат строк."
+    msg_no_settings_title: "Нет настроек"
+    msg_no_settings_text: "Заполните настройки Jira перед созданием задач."
+
+    result_title: "Результат"
+    result_created: "Создано:"
+    result_errors: "Ошибки:"
+    result_no_actions: "Нет действий"
+    settings_title: "QuickJira – Настройки"
+    jira_url: "Jira URL:"
+    user: "Пользователь (email/логин):"
+    token: "API Token:"
+    default_project: "Проект по умолчанию:"
+    default_issue_type: "Тип задачи по умолчанию:"
+    default_assignee: "Исполнитель по умолчанию:"
+    default_due_workdays: "Рабочих дней по умолчанию (@due):"
+    language: "Язык:"
+    check_connection: "Проверить подключение"
+    save: "Сохранить"
+    cancel: "Отмена"
+    connection_fill_required: "Сначала заполните Jira URL, User и API Token."
+    connection_ok_title: "Подключение успешно"
+    connection_ok_message: "Подключение выполнено.\nПользователь: {user}"
+    connection_failed_title: "Ошибка подключения"
+    tray_tooltip: "QuickJira – быстрый ввод в Jira"
+    tray_open: "Открыть ввод…"
+    tray_settings: "Настройки…"
+    tray_about: "О программе…"
+    tray_quit: "Выход"
+    about_title: "О программе QuickJira v1.0"
+    about_text: |
+      QuickJira v1.0
+
+      Лёгкое приложение в системном трее Windows для быстрого создания задач в Jira.
+
+      Введите одну задачу в строке (или многострочную задачу), добавьте встроенные теги, проверьте результат и массово создайте задачи в Jira — без открытия браузера.
+
+  lt:
+    main_title: "QuickJira – Greitas užduočių įvedimas"
+    main_placeholder: |
+      Įveskite po vieną užduotį eilutėje.
+      Pavyzdys:
+      Nauja darbo užduotis @prj myproject @type task @asg me @due next week
+
+      Palaikomi žymekliai: @prj/@project, @type, @asg/@assignee, @due
+    main_placeholder_single: |
+      Įveskite vieną užduotį laisvąja forma.
+      Pirmoji eilutė – antraštė. Likusios eilutės – aprašymas (eilučių lūžiai išsaugomi).
+      Žymekliai (@prj, @type, @asg, @due) gali būti bet kurioje eilutėje.
+
+      Pavyzdys:
+      Ištaisyti gedimą prisijungiant
+        Atlikimo žingsniai:
+        1. Atidaryti programą ir palaukti 30 minučių
+        2. Pabandyti prisijungti
+        @prj MOBILE @type Bug @asg me @due next week
+    main_parse: "Analizuoti  [Ctrl+Enter]"
+    main_settings: "Nustatymai..."
+    main_cancel: "Atšaukti"
+    main_multi_task: "Kelios užduotys (po vieną eilutėje)"
+
+    review_title: "Užduočių peržiūra"
+    review_create: "Sukurti Jira  [Ctrl+Enter]"
+    review_cancel: "Atšaukti  [Esc]"
+    review_add_to_jira: "Pridėti į Jira"
+    review_project: "Projektas"
+    review_type: "Tipas"
+    review_assignee: "Vykdytojas"
+    review_estimate: "Įvertinimas"
+    review_due: "Terminas"
+    review_labels: "Etiketės"
+    review_status_after_create: "Statusas po sukūrimo"
+
+    settings_tab_task: "Užduoties parametrai"
+    settings_tab_app: "Programos parametrai"
+    settings_default_labels: "Numatytosios etiketės:"
+    settings_default_status: "Numatytasis statusas:"
+    settings_stay_on_top: "Viršuje kitų langų:"
+    settings_inactivity_transparency: "Permatomumas neveiklumu:"
+    settings_global_hotkey: "Pasaulinė sparčioji kombinacija:"
+    settings_hotkey_enable: "Įjungti pasaulinę kombinaciją"
+    settings_hotkey_shortcut: "Kombinacija:"
+    settings_autostart: "Paleisti paleidžiant Windows"
+
+    main_quit: "Atšaukti"
+
+    msg_empty_title: "Tuščia"
+    msg_empty_text: "Įveskite bent vieną eilutę."
+    msg_parse_failed_title: "Nepavyko analizuoti"
+    msg_parse_failed_text: "Patikrinkite eilučių formatą."
+    msg_no_settings_title: "Nėra nustatymų"
+    msg_no_settings_text: "Prieš kurdami užduotis užpildykite Jira nustatymus."
+
+    result_title: "Rezultatas"
+    result_created: "Sukurta:"
+    result_errors: "Klaidos:"
+    result_no_actions: "Nėra veiksmų"
+    settings_title: "QuickJira – Nustatymai"
+    jira_url: "Jira URL:"
+    user: "Vartotojas (el. paštas/prisijungimas):"
+    token: "API žetonas:"
+    default_project: "Numatytasis projektas:"
+    default_issue_type: "Numatytasis užduoties tipas:"
+    default_assignee: "Numatytasis vykdytojas:"
+    default_due_workdays: "Numatytosios darbo dienos (@due):"
+    language: "Kalba:"
+    check_connection: "Patikrinti ryšį"
+    save: "Išsaugoti"
+    cancel: "Atšaukti"
+    connection_fill_required: "Pirmiausia užpildykite Jira URL, vartotoją ir API žetoną."
+    connection_ok_title: "Ryšys OK"
+    connection_ok_message: "Ryšys užmegztas.\nVartotojas: {user}"
+    connection_failed_title: "Ryšio klaida"
+    tray_tooltip: "QuickJira – greitas įvedimas į Jira"
+    tray_open: "Atidaryti įvedimą…"
+    tray_settings: "Nustatymai…"
+    tray_about: "Apie programą…"
+    tray_quit: "Išeiti"
+    about_title: "Apie QuickJira v1.0"
+    about_text: |
+      QuickJira v1.0
+
+      Lengva Windows sistemos dėklo programa greitam Jira užduočių kūrimui.
+
+      Įveskite po vieną užduotį eilutėje (arba daugiaeilitę vieną užduotį), pridėkite vietinius žymeklius, peržiūrėkite rezultatą ir masiškai kurkite viską Jira — neatidarydami naršyklės.
+
+  pl:
+    main_title: "QuickJira – Szybkie wprowadzanie zadań"
+    main_placeholder: |
+      Wprowadź jedno zadanie w wierszu.
+      Przykład:
+      Nowe zadanie @prj myproject @type task @asg me @due next week
+
+      Obsługiwane tagi: @prj/@project, @type, @asg/@assignee, @due
+    main_placeholder_single: |
+      Wprowadź jedno zadanie w dowolnej formie.
+      Pierwszy wiersz – tytuł. Pozostałe wiersze – opis (podziały wierszy są zachowane).
+      Tagi (@prj, @type, @asg, @due) mogą pojawić się w dowolnym wierszu.
+
+      Przykład:
+      Napraw błąd przy logowaniu
+        Kroki do odtworzenia:
+        1. Otwórz aplikację i poczekaj 30 minut
+        2. Spróbuj się zalogować
+        @prj MOBILE @type Bug @asg me @due next week
+    main_parse: "Analizuj  [Ctrl+Enter]"
+    main_settings: "Ustawienia..."
+    main_cancel: "Anuluj"
+    main_multi_task: "Wiele zadań (jedno na wiersz)"
+
+    review_title: "Przegląd zadań"
+    review_create: "Utwórz w Jira  [Ctrl+Enter]"
+    review_cancel: "Anuluj  [Esc]"
+    review_add_to_jira: "Dodaj do Jira"
+    review_project: "Projekt"
+    review_type: "Typ"
+    review_assignee: "Wykonawca"
+    review_estimate: "Szacowanie"
+    review_due: "Termin"
+    review_labels: "Etykiety"
+    review_status_after_create: "Status po utworzeniu"
+
+    settings_tab_task: "Parametry zadania"
+    settings_tab_app: "Parametry aplikacji"
+    settings_default_labels: "Domyślne etykiety:"
+    settings_default_status: "Domyślny status:"
+    settings_stay_on_top: "Na wierzchu innych okien:"
+    settings_inactivity_transparency: "Przezroczystość przy bezczynności:"
+    settings_global_hotkey: "Globalny skrót klawiszowy:"
+    settings_hotkey_enable: "Włącz globalny skrót"
+    settings_hotkey_shortcut: "Skrót:"
+    settings_autostart: "Uruchamiaj przy starcie Windows"
+
+    main_quit: "Anuluj"
+
+    msg_empty_title: "Puste"
+    msg_empty_text: "Wprowadź przynajmniej jeden wiersz."
+    msg_parse_failed_title: "Analiza nie powiodła się"
+    msg_parse_failed_text: "Sprawdź format wierszy."
+    msg_no_settings_title: "Brak ustawień"
+    msg_no_settings_text: "Wypełnij ustawienia Jira przed tworzeniem zadań."
+
+    result_title: "Wynik"
+    result_created: "Utworzono:"
+    result_errors: "Błędy:"
+    result_no_actions: "Brak działań"
+    settings_title: "QuickJira – Ustawienia"
+    jira_url: "Jira URL:"
+    user: "Użytkownik (e-mail/login):"
+    token: "Token API:"
+    default_project: "Domyślny projekt:"
+    default_issue_type: "Domyślny typ zadania:"
+    default_assignee: "Domyślny wykonawca:"
+    default_due_workdays: "Domyślne dni robocze (@due):"
+    language: "Język:"
+    check_connection: "Sprawdź połączenie"
+    save: "Zapisz"
+    cancel: "Anuluj"
+    connection_fill_required: "Najpierw wypełnij Jira URL, użytkownika i token API."
+    connection_ok_title: "Połączenie OK"
+    connection_ok_message: "Połączenie nawiązane.\nUżytkownik: {user}"
+    connection_failed_title: "Błąd połączenia"
+    tray_tooltip: "QuickJira – szybkie wprowadzanie do Jira"
+    tray_open: "Otwórz wprowadzanie…"
+    tray_settings: "Ustawienia…"
+    tray_about: "O programie…"
+    tray_quit: "Wyjdź"
+    about_title: "O QuickJira v1.0"
+    about_text: |
+      QuickJira v1.0
+
+      Lekka aplikacja w zasobniku systemowym Windows do szybkiego tworzenia zgłoszeń Jira.
+
+      Wpisz jedno zadanie na wiersz (lub wielowierszowe zadanie), dodaj wbudowane tagi, przejrzyj wynik i zbiorczo utwórz wszystko w Jira — bez otwierania przeglądarki.
+
+  lv:
+    main_title: "QuickJira – Ātra uzdevumu ievade"
+    main_placeholder: |
+      Ievadiet vienu uzdevumu katrā rindā.
+      Piemērs:
+      Jauns darba uzdevums @prj myproject @type task @asg me @due next week
+
+      Atbalstītie birkas: @prj/@project, @type, @asg/@assignee, @due
+    main_placeholder_single: |
+      Ievadiet vienu uzdevumu brīvā formā.
+      Pirmā rinda – virsraksts. Pārējās rindas – apraksts (rindstarpes tiek saglabātas).
+      Birkas (@prj, @type, @asg, @due) var parādīties jebkurā rindā.
+
+      Piemērs:
+      Labot kļūdu pieteikšanās laikā
+        Atveides soļi:
+        1. Atvērt programmu un gaidīt 30 minūtes
+        2. Mēģināt pieteikties
+        @prj MOBILE @type Bug @asg me @due next week
+    main_parse: "Analizēt  [Ctrl+Enter]"
+    main_settings: "Iestatījumi..."
+    main_cancel: "Atcelt"
+    main_multi_task: "Vairāki uzdevumi (viens katrā rindā)"
+
+    review_title: "Uzdevumu pārskats"
+    review_create: "Izveidot Jira  [Ctrl+Enter]"
+    review_cancel: "Atcelt  [Esc]"
+    review_add_to_jira: "Pievienot Jira"
+    review_project: "Projekts"
+    review_type: "Tips"
+    review_assignee: "Izpildītājs"
+    review_estimate: "Novērtējums"
+    review_due: "Termiņš"
+    review_labels: "Birkas"
+    review_status_after_create: "Statuss pēc izveidošanas"
+
+    settings_tab_task: "Uzdevuma parametri"
+    settings_tab_app: "Programmas parametri"
+    settings_default_labels: "Noklusējuma birkas:"
+    settings_default_status: "Noklusējuma statuss:"
+    settings_stay_on_top: "Virs citiem logiem:"
+    settings_inactivity_transparency: "Caurspīdīgums neaktivitātes laikā:"
+    settings_global_hotkey: "Globālā īsinājumtaustiņu kombinācija:"
+    settings_hotkey_enable: "Iespējot globālo kombināciju"
+    settings_hotkey_shortcut: "Kombinācija:"
+    settings_autostart: "Palaist startējot Windows"
+
+    main_quit: "Atcelt"
+
+    msg_empty_title: "Tukšs"
+    msg_empty_text: "Ievadiet vismaz vienu rindu."
+    msg_parse_failed_title: "Analīze neizdevās"
+    msg_parse_failed_text: "Pārbaudiet rindu formātu."
+    msg_no_settings_title: "Nav iestatījumu"
+    msg_no_settings_text: "Pirms uzdevumu veidošanas aizpildiet Jira iestatījumus."
+
+    result_title: "Rezultāts"
+    result_created: "Izveidots:"
+    result_errors: "Kļūdas:"
+    result_no_actions: "Nav darbību"
+    settings_title: "QuickJira – Iestatījumi"
+    jira_url: "Jira URL:"
+    user: "Lietotājs (e-pasts/pieteikšanās):"
+    token: "API pilnvara:"
+    default_project: "Noklusējuma projekts:"
+    default_issue_type: "Noklusējuma uzdevuma tips:"
+    default_assignee: "Noklusējuma izpildītājs:"
+    default_due_workdays: "Noklusējuma darba dienas (@due):"
+    language: "Valoda:"
+    check_connection: "Pārbaudīt savienojumu"
+    save: "Saglabāt"
+    cancel: "Atcelt"
+    connection_fill_required: "Vispirms aizpildiet Jira URL, lietotāju un API pilnvaru."
+    connection_ok_title: "Savienojums OK"
+    connection_ok_message: "Savienojums izveidots.\nLietotājs: {user}"
+    connection_failed_title: "Savienojuma kļūda"
+    tray_tooltip: "QuickJira – ātra ievade Jira"
+    tray_open: "Atvērt ievadi…"
+    tray_settings: "Iestatījumi…"
+    tray_about: "Par programmu…"
+    tray_quit: "Iziet"
+    about_title: "Par QuickJira v1.0"
+    about_text: |
+      QuickJira v1.0
+
+      Viegla Windows sistēmas trejdzeņa programma ātrai Jira uzdevumu veidošanai.
+
+      Ievadiet vienu uzdevumu rindā (vai daudzrindu uzdevumu), pievienojiet iekļautās birkas, pārskatiet rezultātu un lielapjoma veidojiet visu Jira — neatverot pārlūkprogrammu.
+
+tags:
+  en:
+    project:
+      primary: "prj"
+      aliases: ["prj", "project"]
+      description: "set project"
+    type:
+      primary: "type"
+      aliases: ["type", "issue"]
+      description: "set issue type"
+    assignee:
+      primary: "asg"
+      aliases: ["asg", "assignee"]
+      description: "set assignee"
+    due:
+      primary: "due"
+      aliases: ["due"]
+      description: "set due date"
+    estimate:
+      primary: "est"
+      aliases: ["est", "estimate"]
+      description: "set estimate"
+    label:
+      primary: "label"
+      aliases: ["label", "labels", "lbl"]
+      description: "set labels"
+    status:
+      primary: "status"
+      aliases: ["status"]
+      description: "set status after create"
+
+  ru:
+    project:
+      primary: "проект"
+      aliases: ["проект", "про"]
+      description: "указать проект"
+    type:
+      primary: "тип"
+      aliases: ["тип"]
+      description: "тип задачи"
+    assignee:
+      primary: "исп"
+      aliases: ["исп", "на"]
+      description: "исполнитель"
+    due:
+      primary: "срок"
+      aliases: ["срок", "когда"]
+      description: "срок выполнения"
+    estimate:
+      primary: "оценка"
+      aliases: ["оценка"]
+      description: "оценка времени"
+    label:
+      primary: "метка"
+      aliases: ["метка", "метки"]
+      description: "метки"
+    status:
+      primary: "статус"
+      aliases: ["статус"]
+      description: "статус после создания"
+
+  lt:
+    project:
+      primary: "prj"
+      aliases: ["prj", "projektas"]
+      description: "nustatyti projektą"
+    type:
+      primary: "tipas"
+      aliases: ["tipas", "issue"]
+      description: "nustatyti užduoties tipą"
+    assignee:
+      primary: "vykd"
+      aliases: ["vykd", "asg"]
+      description: "nustatyti vykdytoją"
+    due:
+      primary: "terminas"
+      aliases: ["terminas", "due"]
+      description: "nustatyti terminą"
+    estimate:
+      primary: "est"
+      aliases: ["est", "ivert"]
+      description: "nustatyti įvertinimą"
+    label:
+      primary: "etiketė"
+      aliases: ["etiketė", "etiketes"]
+      description: "nustatyti etiketes"
+    status:
+      primary: "statusas"
+      aliases: ["statusas", "status"]
+      description: "statusas po sukūrimo"
+
+  pl:
+    project:
+      primary: "prj"
+      aliases: ["prj", "projekt"]
+      description: "ustaw projekt"
+    type:
+      primary: "typ"
+      aliases: ["typ", "issue"]
+      description: "ustaw typ zadania"
+    assignee:
+      primary: "wyk"
+      aliases: ["wyk", "asg"]
+      description: "ustaw wykonawcę"
+    due:
+      primary: "termin"
+      aliases: ["termin", "due"]
+      description: "ustaw termin"
+    estimate:
+      primary: "est"
+      aliases: ["est", "szac"]
+      description: "ustaw szacowanie"
+    label:
+      primary: "etykieta"
+      aliases: ["etykieta", "etykiety"]
+      description: "ustaw etykiety"
+    status:
+      primary: "status"
+      aliases: ["status"]
+      description: "status po utworzeniu"
+
+  lv:
+    project:
+      primary: "prj"
+      aliases: ["prj", "projekts"]
+      description: "iestatīt projektu"
+    type:
+      primary: "tips"
+      aliases: ["tips", "issue"]
+      description: "iestatīt uzdevuma tipu"
+    assignee:
+      primary: "izp"
+      aliases: ["izp", "asg"]
+      description: "iestatīt izpildītāju"
+    due:
+      primary: "termins"
+      aliases: ["termins", "due"]
+      description: "iestatīt termiņu"
+    estimate:
+      primary: "est"
+      aliases: ["est", "nov"]
+      description: "iestatīt novērtējumu"
+    label:
+      primary: "birka"
+      aliases: ["birka", "birkas"]
+      description: "iestatīt birkas"
+    status:
+      primary: "statuss"
+      aliases: ["statuss", "status"]
+      description: "statuss pēc izveidošanas"

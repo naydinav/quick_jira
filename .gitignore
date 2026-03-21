@@ -1,0 +1,5 @@
+build
+dist
+.venv
+venv
+quick_jira.spec

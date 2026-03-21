@@ -1,0 +1,6 @@
+PySide6
+jira
+dateparser
+rapidfuzz
+appdirs
+pyyaml
