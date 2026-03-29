@@ -82,7 +82,7 @@ except ImportError:
 # Lazy Jira import in JiraClient to keep module import time low
 
 APP_NAME = "QuickJira"
-APP_VERSION = "1.0"
+APP_VERSION = "1.1"
 CONFIG_NAME = "config.json"
 
 APP_ICON_B64 = (
@@ -593,8 +593,14 @@ DEFAULT_UI_TEXT = {
         "tray_tooltip": "QuickJira – quick Jira entry",
         "tray_open": "Open input…",
         "tray_settings": "Settings…",
+        "tray_history": "Task history…",
         "tray_about": "About…",
         "tray_quit": "Quit",
+
+        # ---- TaskHistoryDialog ----
+        "history_title": "Created task history",
+        "history_empty": "No tasks created in the last 30 days.",
+        "history_close": "Close",
 
         # ---- About dialog ----
         "about_title": f"About QuickJira v{APP_VERSION}",
@@ -619,7 +625,16 @@ DEFAULT_TAG_DEFINITIONS: Dict[str, Dict[str, dict]] = {
         "estimate": {"primary": "est",    "aliases": ["est", "estimate"],         "description": "set estimate"},
         "label":    {"primary": "label",  "aliases": ["label", "labels", "lbl"], "description": "set labels"},
         "status":   {"primary": "status", "aliases": ["status"],                 "description": "set status after create"},
-    }
+    },
+    "ru": {
+        "project":  {"primary": "проект", "aliases": ["проект", "про"],           "description": "указать проект"},
+        "type":     {"primary": "тип",    "aliases": ["тип"],                    "description": "тип задачи"},
+        "assignee": {"primary": "исп",    "aliases": ["исп", "на"],              "description": "исполнитель"},
+        "due":      {"primary": "срок",   "aliases": ["срок", "когда"],          "description": "срок выполнения"},
+        "estimate": {"primary": "оценка", "aliases": ["оценка"],                 "description": "оценка времени"},
+        "label":    {"primary": "метка",  "aliases": ["метка", "метки"],         "description": "метки"},
+        "status":   {"primary": "статус", "aliases": ["статус"],                 "description": "статус после создания"},
+    },
 }
 
 
@@ -904,6 +919,7 @@ class AppConfig:
     global_hotkey: str = "Alt+Shift+M"
     multi_task_mode: bool = True
     autostart: bool = False
+    main_window_geometry: str = ""
 
     def is_complete(self) -> bool:
         return bool(self.jira_url and self.jira_user and self.jira_token)
@@ -1271,7 +1287,7 @@ class SmartTaskEdit(QPlainTextEdit):
 
         line = self.current_line_before_cursor()
 
-        # быстрый показ после ввода "@"
+        # show suggestions immediately after typing "@"
         if line.endswith("@"):
             self.update_suggestions()
             return
@@ -1294,7 +1310,7 @@ class SmartTaskEdit(QPlainTextEdit):
     def update_suggestions(self):
         line = self.current_line_before_cursor()
 
-        # 1) tag completion: "@", "@p", "@ти"  — language-aware
+        # 1) tag completion: "@", "@p", "@ti"  — language-aware
         m_tag = re.search(r'@([A-Za-zА-Яа-я_0-9]*)$', line)
         if m_tag:
             lang = getattr(getattr(self.owner, "cfg", None), "language", "en")
@@ -1303,7 +1319,7 @@ class SmartTaskEdit(QPlainTextEdit):
             items = [it for it in all_items if it.lower(
             ).startswith(prefix.lower())]
 
-            # если тег введён полностью и он один — не показываем popup
+            # if the tag is fully typed and is the only match — hide popup
             if len(items) == 1:
                 item_tag = items[0].split(" \u2014 ", 1)[0].strip()
                 if item_tag.lower() == prefix.lower():
@@ -1501,7 +1517,7 @@ class SmartTaskEdit(QPlainTextEdit):
         prefix = (prefix or "").strip()
         prefix_low = prefix.lower()
 
-        # базовые словесные подсказки
+        # base text suggestions
         items = []
 
         if not prefix_low:
@@ -1511,14 +1527,13 @@ class SmartTaskEdit(QPlainTextEdit):
             if x.lower().startswith(prefix_low):
                 items.append(x)
 
-        # YYYY-MM-DD или начало ISO-даты
+        # YYYY-MM-DD or partial ISO date
         if re.match(r'^\d{4}(-\d{0,2})?(-\d{0,2})?$', prefix):
             if prefix not in items:
                 items.insert(0, prefix)
 
-        # Текстовые даты:
+        # Text dates:
         # "15 december 2026"
-        # "15 декабря 2026"
         if re.match(r'^\d{1,2}\s+[A-Za-zА-Яа-яЁё]+(?:\s+\d{4})?$', prefix, flags=re.IGNORECASE):
             if prefix not in items:
                 items.insert(0, prefix)
@@ -1715,7 +1730,7 @@ class SmartTaskEdit(QPlainTextEdit):
 
         value_prefix = m.group(2)
 
-        # если значение завершено пробелом - не подсказываем
+        # if value ends with a space — no suggestion
         if value_prefix and value_prefix.endswith(" "):
             return None
 
@@ -2265,11 +2280,11 @@ class QuickParser:
         if not text:
             return None
 
-        # 1) сначала пробуем ISO напрямую
+        # 1) try ISO format directly
         if re.match(r'^\d{4}-\d{2}-\d{2}$', text):
             return text
 
-        # 2) затем dateparser для ru/en текстовых дат
+        # 2) try dateparser for natural language dates
         dt = dateparser.parse(
             text,
             languages=["ru", "en"],
@@ -2450,11 +2465,11 @@ class QuickParser:
         if due_text and not due_iso:
             due_iso = self._heuristic_date(due_text)
 
-        # если дата указана, но не распарсилась
+        # date was provided but could not be parsed
         if due_text and not due_iso:
             due_parse_failed = True
 
-        # если даты нет ИЛИ не распознали — используем default_due_workdays
+        # no date or failed to parse — fall back to default_due_workdays
         if (not due_text or due_parse_failed) and getattr(self.defaults, "default_due_workdays", 0):
             d = self._add_business_days(
                 date.today(),
@@ -3400,6 +3415,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(
             f"{tr(self.cfg.language, 'main_title')} v{APP_VERSION}")
         self.resize(750, 420)
+        saved_geom = getattr(self.cfg, "main_window_geometry", "")
+        if saved_geom:
+            try:
+                from PySide6.QtCore import QByteArray
+                self.restoreGeometry(
+                    QByteArray.fromBase64(saved_geom.encode()))
+            except Exception:
+                pass
 
         central = QWidget()
         v = QVBoxLayout(central)
@@ -3441,8 +3464,21 @@ class MainWindow(QMainWindow):
         return act
 
     def closeEvent(self, event):
+        self._save_geometry()
         event.ignore()
         self.hide()
+
+    def _save_geometry(self):
+        try:
+            geom_bytes = self.saveGeometry().toBase64().data().decode()
+            self.cfg.main_window_geometry = geom_bytes
+            self.cfg_mgr.save()
+        except Exception:
+            pass
+
+    def hideEvent(self, event):
+        self._save_geometry()
+        super().hideEvent(event)
 
     def _on_multi_task_changed(self, checked: bool):
         self.cfg.multi_task_mode = checked
@@ -3554,6 +3590,7 @@ class MainWindow(QMainWindow):
         if review.exec() == QDialog.Accepted:
             rows = review.as_rows()
             self._create_in_jira(rows)
+            self.input.clear()
 
     def _create_in_jira(self, rows: List[ParsedTask]):
         lang = getattr(self.cfg, "language", "en")
@@ -3602,6 +3639,7 @@ class MainWindow(QMainWindow):
                     self.jira.transition_issue(key, target_status)
                 ok.append((r.summary, key))
                 self.jira.add_favorite_project(r.project)
+                append_history(key, r.summary, self.cfg.jira_url)
             except Exception as e:
                 failed.append((r.summary, str(e)))
 
@@ -3637,7 +3675,7 @@ class MainWindow(QMainWindow):
         if not self.jira:
             return
 
-        # если уже есть поток, не запускаем второй раз
+        # skip if warmup thread is already running
         if hasattr(self, "_warmup_thread") and self._warmup_thread is not None:
             if self._warmup_thread.isRunning():
                 return
@@ -3705,6 +3743,86 @@ def build_app_icon() -> QIcon:
     return QIcon(pm)
 
 
+# --------------------------- Task History ---------------------------
+
+HISTORY_FILE = os.path.join(user_config_dir(
+    APP_NAME, roaming=True), "history.json")
+
+
+def load_history() -> list:
+    if not os.path.exists(HISTORY_FILE):
+        return []
+    try:
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def save_history(entries: list):
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(entries, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def append_history(key: str, summary: str, jira_url: str):
+    entries = load_history()
+    entries.insert(0, {
+        "key": key,
+        "summary": summary,
+        "url": f"{jira_url.rstrip('/')}/browse/{key}",
+        "created_at": date.today().isoformat(),
+    })
+    cutoff = (date.today() - timedelta(days=30)).isoformat()
+    entries = [e for e in entries if e.get("created_at", "") >= cutoff]
+    save_history(entries)
+
+
+class TaskHistoryDialog(QDialog):
+    """Shows tasks created in the last 30 days, newest first, with clickable links."""
+
+    def __init__(self, cfg, parent=None):
+        super().__init__(parent)
+        lang = getattr(cfg, "language", "en")
+        self.setWindowTitle(tr(lang, "history_title"))
+        self.resize(700, 500)
+
+        layout = QVBoxLayout(self)
+
+        entries = load_history()
+        cutoff = (date.today() - timedelta(days=30)).isoformat()
+        entries = [e for e in entries if e.get("created_at", "") >= cutoff]
+
+        if not entries:
+            lbl = QLabel(tr(lang, "history_empty"))
+            lbl.setAlignment(Qt.AlignCenter)
+            layout.addWidget(lbl)
+        else:
+            from PySide6.QtWidgets import QTextBrowser
+            browser = QTextBrowser()
+            browser.setOpenExternalLinks(True)
+            lines = []
+            for e in entries:
+                key = escape(e.get("key", ""))
+                summary = escape(e.get("summary", ""))
+                url = e.get("url", "")
+                created = e.get("created_at", "")
+                lines.append(
+                    f'<p>{created} &nbsp; <a href="{url}">{key}</a> — {summary}</p>'
+                )
+            browser.setHtml("<html><body>" + "".join(lines) + "</body></html>")
+            layout.addWidget(browser)
+
+        btn_close = QPushButton(tr(lang, "history_close"))
+        btn_close.clicked.connect(self.accept)
+        h = QHBoxLayout()
+        h.addStretch()
+        h.addWidget(btn_close)
+        layout.addLayout(h)
+
+
 class TrayApp:
     """System-tray controller that owns the :class:`MainWindow` lifecycle.
 
@@ -3720,7 +3838,7 @@ class TrayApp:
         # Build a guaranteed non-null tray icon
         if not QSystemTrayIcon.isSystemTrayAvailable():
             QMessageBox.critical(self.window, "QuickJira",
-                                 "Системный трей недоступен на этой системе.")
+                                 "System tray is not available on this system.")
         tray_icon = build_app_icon()
         self.tray = QSystemTrayIcon(tray_icon, self.window)
         self.tray.setIcon(tray_icon)
@@ -3730,10 +3848,12 @@ class TrayApp:
         menu = QMenu()
         self.act_open = QAction(menu)
         self.act_settings = QAction(menu)
+        self.act_history = QAction(menu)
         self.act_about = QAction(menu)
         self.act_quit = QAction(menu)
         menu.addAction(self.act_open)
         menu.addAction(self.act_settings)
+        menu.addAction(self.act_history)
         menu.addSeparator()
         menu.addAction(self.act_about)
         menu.addSeparator()
@@ -3743,6 +3863,7 @@ class TrayApp:
         self.tray.activated.connect(self.on_tray_activated)
         self.act_open.triggered.connect(self.show_window)
         self.act_settings.triggered.connect(self._on_settings)
+        self.act_history.triggered.connect(self._on_history)
         self.act_about.triggered.connect(self._on_about)
         self.act_quit.triggered.connect(self.app.quit)
         self.app.aboutToQuit.connect(self._on_quit)
@@ -3755,8 +3876,13 @@ class TrayApp:
         self.tray.setToolTip(tr(lang, "tray_tooltip"))
         self.act_open.setText(tr(lang, "tray_open"))
         self.act_settings.setText(tr(lang, "tray_settings"))
+        self.act_history.setText(tr(lang, "tray_history"))
         self.act_about.setText(tr(lang, "tray_about"))
         self.act_quit.setText(tr(lang, "tray_quit"))
+
+    def _on_history(self):
+        dlg = TaskHistoryDialog(self.cfg_mgr.config, self.window)
+        dlg.exec()
 
     def _on_about(self):
         lang = getattr(self.cfg_mgr.config, "language", "en")
