@@ -15,7 +15,7 @@ translations:
       Example:
       New task for work @prj myproject @type task @asg me @due next week
 
-      Supported tags: @prj/@project, @type, @asg/@assignee, @due
+      Supported tags: @prj/@project, @type, @asg/@assignee, @due, @start, @est
     main_parse: "Parse  [Ctrl+Enter]"
     main_settings: "Settings..."
     main_cancel: "Cancel"
@@ -67,18 +67,18 @@ translations:
       Пример:
       Новая задача для работы @prj myproject @type task @asg me @due next week
 
-      Поддерживаемые теги: @prj/@project/@проект, @type/@тип, @asg/@assignee/@исп/@на, @due/@срок/@когда
+      Поддерживаемые теги: @prj/@project/@проект, @type/@тип, @asg/@assignee/@исп/@на, @due/@срок/@когда, @start/@начало/@нач, @est/@оценка
     main_placeholder_single: |
       Введите одну задачу в свободной форме.
       Первая строка — заголовок. Остальные строки — описание (переносы строк сохраняются).
-      Теги (@prj, @type, @asg, @due) можно указывать на любой строке.
+      Теги (@prj, @type, @asg, @due, @start, @est) можно указывать на любой строке.
 
       Пример:
       Исправить падение при входе
         Шаги для воспроизведения:
         1. Открыть приложение и подождать 30 минут
         2. Попробовать войти
-        @prj MOBILE @type Bug @asg me @due next week
+        @prj MOBILE @type Bug @asg me @due next week @start tomorrow
     main_parse: "Разобрать  [Ctrl+Enter]"
     main_settings: "Настройки..."
     main_cancel: "Отмена"
@@ -92,6 +92,7 @@ translations:
     review_type: "Тип"
     review_assignee: "Исполнитель"
     review_estimate: "Оценка"
+    review_start: "Начало"
     review_due: "Срок"
     review_labels: "Метки"
     review_status_after_create: "Статус после создания"
@@ -105,6 +106,8 @@ translations:
     settings_global_hotkey: "Глобальная комбинация клавиш:"
     settings_hotkey_enable: "Включить глобальную комбинацию"
     settings_hotkey_shortcut: "Комбинация:"
+    settings_my_tasks_hotkey: "Комбинация «Мои задачи»:"
+    settings_my_tasks_hotkey_enable: "Включить комбинацию «Мои задачи»"
     settings_autostart: "Запускать при старте Windows"
 
     main_quit: "Отмена"
@@ -137,6 +140,20 @@ translations:
     connection_ok_message: "Подключение выполнено.\nПользователь: {user}"
     connection_failed_title: "Ошибка подключения"
     tray_tooltip: "QuickJira – быстрый ввод в Jira"
+    tray_my_tasks: "Мои задачи…"
+    my_tasks_title: "Мои задачи"
+    my_tasks_filter_label: "Типы:"
+    my_tasks_types_all: "Все типы"
+    my_tasks_refresh: "Обновить"
+    my_tasks_close: "Закрыть"
+    my_tasks_loading: "Загрузка задач…"
+    my_tasks_empty: "Задач на ближайший месяц не найдено."
+    my_tasks_error: "Ошибка загрузки задач: {msg}"
+    my_tasks_group_overdue: "⚠ Просроченные"
+    my_tasks_group_approaching: "🔔 Подходит дедлайн"
+    my_tasks_group_next_month: "📅 Ближайший месяц"
+    my_tasks_due: "Срок:"
+    my_tasks_no_jira: "Jira не настроена. Откройте Настройки."
     tray_open: "Открыть ввод…"
     tray_settings: "Настройки…"
     tray_about: "О программе…"
@@ -160,14 +177,14 @@ translations:
     main_placeholder_single: |
       Įveskite vieną užduotį laisvąja forma.
       Pirmoji eilutė – antraštė. Likusios eilutės – aprašymas (eilučių lūžiai išsaugomi).
-      Žymekliai (@prj, @type, @asg, @due) gali būti bet kurioje eilutėje.
+      Žymekliai (@prj, @type, @asg, @due, @start, @est) gali būti bet kurioje eilutėje.
 
       Pavyzdys:
       Ištaisyti gedimą prisijungiant
         Atlikimo žingsniai:
         1. Atidaryti programą ir palaukti 30 minučių
         2. Pabandyti prisijungti
-        @prj MOBILE @type Bug @asg me @due next week
+        @prj MOBILE @type Bug @asg me @due next week @start tomorrow
     main_parse: "Analizuoti  [Ctrl+Enter]"
     main_settings: "Nustatymai..."
     main_cancel: "Atšaukti"
@@ -181,6 +198,7 @@ translations:
     review_type: "Tipas"
     review_assignee: "Vykdytojas"
     review_estimate: "Įvertinimas"
+    review_start: "Pradžia"
     review_due: "Terminas"
     review_labels: "Etiketės"
     review_status_after_create: "Statusas po sukūrimo"
@@ -194,6 +212,8 @@ translations:
     settings_global_hotkey: "Pasaulinė sparčioji kombinacija:"
     settings_hotkey_enable: "Įjungti pasaulinę kombinaciją"
     settings_hotkey_shortcut: "Kombinacija:"
+    settings_my_tasks_hotkey: "Mano užduočių kombinacija:"
+    settings_my_tasks_hotkey_enable: "Įjungti mano užduočių kombinaciją"
     settings_autostart: "Paleisti paleidžiant Windows"
 
     main_quit: "Atšaukti"
@@ -249,14 +269,14 @@ translations:
     main_placeholder_single: |
       Wprowadź jedno zadanie w dowolnej formie.
       Pierwszy wiersz – tytuł. Pozostałe wiersze – opis (podziały wierszy są zachowane).
-      Tagi (@prj, @type, @asg, @due) mogą pojawić się w dowolnym wierszu.
+      Tagi (@prj, @type, @asg, @due, @start, @est) mogą pojawić się w dowolnym wierszu.
 
       Przykład:
       Napraw błąd przy logowaniu
         Kroki do odtworzenia:
         1. Otwórz aplikację i poczekaj 30 minut
         2. Spróbuj się zalogować
-        @prj MOBILE @type Bug @asg me @due next week
+        @prj MOBILE @type Bug @asg me @due next week @start tomorrow
     main_parse: "Analizuj  [Ctrl+Enter]"
     main_settings: "Ustawienia..."
     main_cancel: "Anuluj"
@@ -270,6 +290,7 @@ translations:
     review_type: "Typ"
     review_assignee: "Wykonawca"
     review_estimate: "Szacowanie"
+    review_start: "Początek"
     review_due: "Termin"
     review_labels: "Etykiety"
     review_status_after_create: "Status po utworzeniu"
@@ -283,6 +304,8 @@ translations:
     settings_global_hotkey: "Globalny skrót klawiszowy:"
     settings_hotkey_enable: "Włącz globalny skrót"
     settings_hotkey_shortcut: "Skrót:"
+    settings_my_tasks_hotkey: "Skrót Moje zadania:"
+    settings_my_tasks_hotkey_enable: "Włącz skrót Moje zadania"
     settings_autostart: "Uruchamiaj przy starcie Windows"
 
     main_quit: "Anuluj"
@@ -338,14 +361,14 @@ translations:
     main_placeholder_single: |
       Ievadiet vienu uzdevumu brīvā formā.
       Pirmā rinda – virsraksts. Pārējās rindas – apraksts (rindstarpes tiek saglabātas).
-      Birkas (@prj, @type, @asg, @due) var parādīties jebkurā rindā.
+      Birkas (@prj, @type, @asg, @due, @start, @est) var parādīties jebkurā rindā.
 
       Piemērs:
       Labot kļūdu pieteikšanās laikā
         Atveides soļi:
         1. Atvērt programmu un gaidīt 30 minūtes
         2. Mēģināt pieteikties
-        @prj MOBILE @type Bug @asg me @due next week
+        @prj MOBILE @type Bug @asg me @due next week @start tomorrow
     main_parse: "Analizēt  [Ctrl+Enter]"
     main_settings: "Iestatījumi..."
     main_cancel: "Atcelt"
@@ -359,6 +382,7 @@ translations:
     review_type: "Tips"
     review_assignee: "Izpildītājs"
     review_estimate: "Novērtējums"
+    review_start: "Sākums"
     review_due: "Termiņš"
     review_labels: "Birkas"
     review_status_after_create: "Statuss pēc izveidošanas"
@@ -372,6 +396,8 @@ translations:
     settings_global_hotkey: "Globālā īsinājumtaustiņu kombinācija:"
     settings_hotkey_enable: "Iespējot globālo kombināciju"
     settings_hotkey_shortcut: "Kombinācija:"
+    settings_my_tasks_hotkey: "Manu uzdevumu kombinācija:"
+    settings_my_tasks_hotkey_enable: "Iespējot manu uzdevumu kombināciju"
     settings_autostart: "Palaist startējot Windows"
 
     main_quit: "Atcelt"
@@ -434,6 +460,10 @@ tags:
       primary: "due"
       aliases: ["due"]
       description: "set due date"
+    start:
+      primary: "start"
+      aliases: ["start", "begin"]
+      description: "set start date"
     estimate:
       primary: "est"
       aliases: ["est", "estimate"]
@@ -464,6 +494,10 @@ tags:
       primary: "срок"
       aliases: ["срок", "когда"]
       description: "срок выполнения"
+    start:
+      primary: "начало"
+      aliases: ["начало", "нач", "start"]
+      description: "дата начала"
     estimate:
       primary: "оценка"
       aliases: ["оценка"]
@@ -494,6 +528,10 @@ tags:
       primary: "terminas"
       aliases: ["terminas", "due"]
       description: "nustatyti terminą"
+    start:
+      primary: "pradzia"
+      aliases: ["pradzia", "start"]
+      description: "nustatyti pradžią"
     estimate:
       primary: "est"
       aliases: ["est", "ivert"]
@@ -524,6 +562,10 @@ tags:
       primary: "termin"
       aliases: ["termin", "due"]
       description: "ustaw termin"
+    start:
+      primary: "start"
+      aliases: ["start", "poczatek"]
+      description: "ustaw datę rozpoczęcia"
     estimate:
       primary: "est"
       aliases: ["est", "szac"]
@@ -554,6 +596,10 @@ tags:
       primary: "termins"
       aliases: ["termins", "due"]
       description: "iestatīt termiņu"
+    start:
+      primary: "sakums"
+      aliases: ["sakums", "start"]
+      description: "iestatīt sākumu"
     estimate:
       primary: "est"
       aliases: ["est", "nov"]

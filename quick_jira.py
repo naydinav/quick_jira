@@ -31,6 +31,7 @@ from rapidfuzz import fuzz, process as rfprocess
 
 from pathlib import Path
 import json
+import math
 import os
 import sys
 import base64
@@ -82,7 +83,7 @@ except ImportError:
 # Lazy Jira import in JiraClient to keep module import time low
 
 APP_NAME = "QuickJira"
-APP_VERSION = "1.1"
+APP_VERSION = "1.2"
 CONFIG_NAME = "config.json"
 
 APP_ICON_B64 = (
@@ -506,18 +507,18 @@ DEFAULT_UI_TEXT = {
             "Enter one task per line.\n"
             "Example:\n"
             "New task for work @prj naidzin @type issue @asg me @due next week\n\n"
-            "Supported tags: @prj/@project, @type, @asg/@assignee, @due"
+            "Supported tags: @prj/@project, @type, @asg/@assignee, @due, @start, @est"
         ),
         "main_placeholder_single": (
             "Enter one task in free form.\n"
             "First line — summary.  Remaining lines — description (newlines preserved).\n"
-            "Tags (@prj, @type, @asg, @due) can appear on any line.\n\n"
+            "Tags (@prj, @type, @asg, @due, @start, @est) can appear on any line.\n\n"
             "Example:\n"
             "Fix crash on login\n"
             "  Steps to reproduce:\n"
             "  1. Open the app and wait 30 min\n"
             "  2. Try to log in\n"
-            "  @prj MOBILE @type Bug @asg me @due next week"
+            "  @prj MOBILE @type Bug @asg me @due next week @start tomorrow"
         ),
 
         "main_parse": "Parse  [Ctrl+Enter]",
@@ -534,6 +535,7 @@ DEFAULT_UI_TEXT = {
         "review_type": "Type",
         "review_assignee": "Assignee",
         "review_estimate": "Estimate",
+        "review_start": "Start",
         "review_due": "Due",
         "review_labels": "Labels",
         "review_status_after_create": "Status after create",
@@ -576,6 +578,8 @@ DEFAULT_UI_TEXT = {
         "settings_global_hotkey": "Global hotkey:",
         "settings_hotkey_enable": "Enable global hotkey",
         "settings_hotkey_shortcut": "Shortcut:",
+        "settings_my_tasks_hotkey": "My Tasks hotkey:",
+        "settings_my_tasks_hotkey_enable": "Enable My Tasks hotkey",
         "settings_autostart": "Run at Windows startup",
 
         "check_connection": "Check connection",
@@ -589,13 +593,35 @@ DEFAULT_UI_TEXT = {
 
         "connection_failed_title": "Connection failed",
 
+        "settings_start_date_field": "Start date field ID:",
+        "settings_start_date_field_hint": "Leave empty to disable Start Date",
+        "settings_start_date_field_available": "✓ Field is available in Jira",
+        "settings_start_date_field_missing": "✗ Field not found — Start Date will be disabled",
+        "settings_start_date_field_skipped": "Start date field not configured — skipped",
+
         # ---- TrayApp ----
         "tray_tooltip": "QuickJira – quick Jira entry",
         "tray_open": "Open input…",
         "tray_settings": "Settings…",
         "tray_history": "Task history…",
+        "tray_my_tasks": "My tasks…",
         "tray_about": "About…",
         "tray_quit": "Quit",
+
+        # ---- MyTasksDialog ----
+        "my_tasks_title": "My Tasks",
+        "my_tasks_filter_label": "Types:",
+        "my_tasks_types_all": "All types",
+        "my_tasks_refresh": "Refresh",
+        "my_tasks_close": "Close",
+        "my_tasks_loading": "Loading tasks…",
+        "my_tasks_empty": "No tasks found for the next 30 days.",
+        "my_tasks_error": "Error loading tasks: {msg}",
+        "my_tasks_group_overdue": "⚠ Overdue",
+        "my_tasks_group_approaching": "🔔 Deadline approaching",
+        "my_tasks_group_next_month": "📅 Next month",
+        "my_tasks_due": "Due:",
+        "my_tasks_no_jira": "Jira is not configured. Open Settings first.",
 
         # ---- TaskHistoryDialog ----
         "history_title": "Created task history",
@@ -622,6 +648,7 @@ DEFAULT_TAG_DEFINITIONS: Dict[str, Dict[str, dict]] = {
         "type":     {"primary": "type",   "aliases": ["type", "issue"],           "description": "set issue type"},
         "assignee": {"primary": "asg",    "aliases": ["asg", "assignee"],         "description": "set assignee"},
         "due":      {"primary": "due",    "aliases": ["due"],                     "description": "set due date"},
+        "start":    {"primary": "start",  "aliases": ["start", "begin"],          "description": "set start date"},
         "estimate": {"primary": "est",    "aliases": ["est", "estimate"],         "description": "set estimate"},
         "label":    {"primary": "label",  "aliases": ["label", "labels", "lbl"], "description": "set labels"},
         "status":   {"primary": "status", "aliases": ["status"],                 "description": "set status after create"},
@@ -631,6 +658,7 @@ DEFAULT_TAG_DEFINITIONS: Dict[str, Dict[str, dict]] = {
         "type":     {"primary": "тип",    "aliases": ["тип"],                    "description": "тип задачи"},
         "assignee": {"primary": "исп",    "aliases": ["исп", "на"],              "description": "исполнитель"},
         "due":      {"primary": "срок",   "aliases": ["срок", "когда"],          "description": "срок выполнения"},
+        "start":    {"primary": "начало", "aliases": ["начало", "нач", "start"], "description": "дата начала"},
         "estimate": {"primary": "оценка", "aliases": ["оценка"],                 "description": "оценка времени"},
         "label":    {"primary": "метка",  "aliases": ["метка", "метки"],         "description": "метки"},
         "status":   {"primary": "статус", "aliases": ["статус"],                 "description": "статус после создания"},
@@ -797,7 +825,7 @@ def tr(lang: str, key: str) -> str:
 
 
 _TAG_FAMILIES = ("project", "type", "assignee",
-                 "due", "estimate", "label", "status")
+                 "due", "start", "estimate", "label", "status")
 
 # Base English aliases that are always recognized regardless of language settings
 _BASE_ALIASES: Dict[str, set] = {
@@ -805,6 +833,7 @@ _BASE_ALIASES: Dict[str, set] = {
     "type":     {"type", "issue"},
     "assignee": {"asg", "assignee"},
     "due":      {"due"},
+    "start":    {"start", "begin"},
     "estimate": {"est", "estimate"},
     "label":    {"label", "labels", "lbl"},
     "status":   {"status"},
@@ -836,11 +865,13 @@ TAG_PATTERNS: Dict[str, str] = {
     f: _build_tag_pattern(f) for f in SUPPORTED_TAGS}
 
 
-def tag_completion_items(lang: str) -> List[str]:
+def tag_completion_items(lang: str, exclude_families: set = frozenset()) -> List[str]:
     """Return language-aware tag completion list formatted as '<aliases> — description'."""
     lang_defs = TAG_DEFINITIONS.get(lang) or TAG_DEFINITIONS.get("en", {})
     items = []
     for family in _TAG_FAMILIES:
+        if family in exclude_families:
+            continue
         defn = lang_defs.get(family, {})
         aliases = defn.get("aliases", None)
         if not aliases:
@@ -917,9 +948,13 @@ class AppConfig:
     inactivity_transparency: int = 30
     global_hotkey_enabled: bool = False
     global_hotkey: str = "Alt+Shift+M"
+    my_tasks_hotkey_enabled: bool = False
+    my_tasks_hotkey: str = "Alt+Shift+T"
     multi_task_mode: bool = True
     autostart: bool = False
     main_window_geometry: str = ""
+    start_date_field: str = "customfield_11011"
+    my_tasks_hidden_types: str = ""
 
     def is_complete(self) -> bool:
         return bool(self.jira_url and self.jira_user and self.jira_token)
@@ -1313,9 +1348,12 @@ class SmartTaskEdit(QPlainTextEdit):
         # 1) tag completion: "@", "@p", "@ti"  — language-aware
         m_tag = re.search(r'@([A-Za-zА-Яа-я_0-9]*)$', line)
         if m_tag:
-            lang = getattr(getattr(self.owner, "cfg", None), "language", "en")
+            cfg = getattr(self.owner, "cfg", None)
+            lang = getattr(cfg, "language", "en")
             prefix = "@" + m_tag.group(1)
-            all_items = tag_completion_items(lang)
+            _excl = set() if getattr(
+                cfg, "start_date_field", "").strip() else {"start"}
+            all_items = tag_completion_items(lang, _excl)
             items = [it for it in all_items if it.lower(
             ).startswith(prefix.lower())]
 
@@ -1367,6 +1405,20 @@ class SmartTaskEdit(QPlainTextEdit):
 
         # 5) due values
         value_prefix = self.should_suggest_tag_value(line, TAG_PATTERNS["due"])
+        if value_prefix is not None:
+            items = self.due_suggestions(value_prefix.lower())
+            if self.should_hide_on_exact_match(value_prefix, items):
+                self.popup.hide()
+                return
+            self.popup.show_items(items, self.popup_global_pos())
+            return
+
+        # 5b) start values — same suggestions as due (only if field configured)
+        _cfg = getattr(self.owner, "cfg", None)
+        value_prefix = (
+            self.should_suggest_tag_value(line, TAG_PATTERNS["start"])
+            if getattr(_cfg, "start_date_field", "").strip() else None
+        )
         if value_prefix is not None:
             items = self.due_suggestions(value_prefix.lower())
             if self.should_hide_on_exact_match(value_prefix, items):
@@ -1677,6 +1729,19 @@ class SmartTaskEdit(QPlainTextEdit):
             self.popup.hide()
             return
 
+        # replace start value
+        m_start = re.search(TAG_PATTERNS["start"], line, flags=re.IGNORECASE)
+        if m_start:
+            prefix_text = m_start.group(2)
+            start = tc.position() - len(prefix_text)
+            tc.setPosition(start)
+            tc.setPosition(start + len(prefix_text),
+                           QTextCursor.MoveMode.KeepAnchor)
+            tc.insertText(text)
+            self.setTextCursor(tc)
+            self.popup.hide()
+            return
+
         # replace assignee value
         m_asg = re.search(TAG_PATTERNS["assignee"], line, flags=re.IGNORECASE)
         if m_asg:
@@ -1959,7 +2024,9 @@ class JiraClient:
                      assignee_account_id: Optional[str], due_date: Optional[str],
                      description: Optional[str] = None,
                      estimate_text: Optional[str] = None,
-                     labels: Optional[List[str]] = None) -> str:
+                     labels: Optional[List[str]] = None,
+                     start_date: Optional[str] = None,
+                     start_date_field: Optional[str] = None) -> str:
         self._ensure()
         fields = {
             "project": {"key": project_key},
@@ -1970,6 +2037,8 @@ class JiraClient:
             fields["assignee"] = {"id": assignee_account_id}
         if due_date:
             fields["duedate"] = due_date  # yyyy-mm-dd
+        if start_date and start_date_field:
+            fields[start_date_field] = start_date  # yyyy-mm-dd
         if description:
             fields["description"] = description
         if estimate_text:
@@ -1980,6 +2049,54 @@ class JiraClient:
             fields["labels"] = labels
         issue = self._jira.create_issue(fields=fields)
         return issue.key
+
+    def fetch_my_tasks(self, start_date_field: str = "") -> List[dict]:
+        """Fetch open tasks assigned to current user with a due date set.
+
+        Applies start-date filter if ``start_date_field`` is configured.
+        Returns a list of dicts: key, summary, due_date, issue_type,
+        estimate_seconds, url.
+        """
+        self._ensure()
+        jql_parts = [
+            "assignee = currentUser()",
+            "statusCategory != Done",
+            "due is not null",
+        ]
+        if start_date_field:
+            m = re.search(r'customfield_(\d+)', start_date_field)
+            if m:
+                cf_num = m.group(1)
+                jql_parts.append(
+                    f"(cf[{cf_num}] is EMPTY or cf[{cf_num}] <= startofday())"
+                )
+        jql = " and ".join(jql_parts) + " ORDER BY due ASC"
+
+        fields = ["summary", "duedate", "issuetype",
+                  "timeoriginalestimate", "timetracking"]
+        try:
+            issues = self._jira.search_issues(
+                jql, fields=fields, maxResults=200)
+        except Exception:
+            issues = []
+
+        base_url = self.cfg.jira_url.rstrip("/")
+        result: List[dict] = []
+        for issue in issues:
+            f = issue.fields
+            due_date = getattr(f, "duedate", None) or ""
+            issue_type = getattr(
+                getattr(f, "issuetype", None), "name", "") or ""
+            est_secs = getattr(f, "timeoriginalestimate", None) or 0
+            result.append({
+                "key": issue.key,
+                "summary": getattr(f, "summary", "") or "",
+                "due_date": due_date,
+                "issue_type": issue_type,
+                "estimate_seconds": int(est_secs) if est_secs else 0,
+                "url": f"{base_url}/browse/{issue.key}",
+            })
+        return result
 
     def get_labels(self, prefix: str = "") -> List[str]:
         """Return label suggestions from the warmup cache."""
@@ -2165,7 +2282,9 @@ class ParsedTask:
     assignee_account_id: Optional[str]
     due_str: str
     due_date: Optional[str]
-    estimate_str: str
+    start_str: str = ""
+    start_date: Optional[str] = None
+    estimate_str: str = ""
     labels: List[str] = field(default_factory=list)
     target_status: str = ""
     due_parse_failed: bool = False
@@ -2331,6 +2450,72 @@ class QuickParser:
                 remaining -= 1
         return d
 
+    @staticmethod
+    def _estimate_to_business_days(estimate_text: str) -> float:
+        """Convert estimate string (e.g. '1h', '2d', '1w', '1w 2d') to number of working days."""
+        if not estimate_text:
+            return 1.0
+        text = estimate_text.strip().lower()
+        total_days = 0.0
+        for m in re.finditer(r'(\d+(?:\.\d+)?)\s*([wdhm])', text):
+            val = float(m.group(1))
+            unit = m.group(2)
+            if unit == 'w':
+                total_days += val * 5
+            elif unit == 'd':
+                total_days += val
+            elif unit == 'h':
+                total_days += val / 8
+            elif unit == 'm':
+                total_days += val / 480
+        return total_days if total_days > 0 else 1.0
+
+    @staticmethod
+    def _calc_start_from_due(due_iso: str, estimate_text: str) -> str:
+        """Calculate start date from due date and estimate.
+
+        Rules:
+        - estimate <= 1 working day → start = due - 1 business day
+        - estimate > 1 working day → start = due - ceil(days * 1.25) business days
+        - if result is before today → clamp to today
+        """
+        try:
+            due_d = date.fromisoformat(due_iso)
+        except (ValueError, TypeError):
+            return date.today().strftime("%Y-%m-%d")
+
+        est_days = QuickParser._estimate_to_business_days(estimate_text)
+        if est_days <= 1.0:
+            offset = 1
+        else:
+            offset = math.ceil(est_days * 1.25)
+
+        start_d = QuickParser._add_business_days(due_d, -offset)
+        today = date.today()
+        if start_d < today:
+            start_d = today
+        return start_d.strftime("%Y-%m-%d")
+
+    @staticmethod
+    def _calc_due_from_start(start_iso: str, estimate_text: str) -> str:
+        """Calculate due date from start date and estimate.
+
+        due = start + ceil(days * 1.25) business days (minimum 1 business day)
+        """
+        try:
+            start_d = date.fromisoformat(start_iso)
+        except (ValueError, TypeError):
+            start_d = date.today()
+
+        est_days = QuickParser._estimate_to_business_days(estimate_text)
+        if est_days <= 1.0:
+            offset = 1
+        else:
+            offset = math.ceil(est_days * 1.25)
+
+        due_d = QuickParser._add_business_days(start_d, offset)
+        return due_d.strftime("%Y-%m-%d")
+
     def _best_project(self, text: str) -> str:
         if not self.jira:
             return text or self.defaults.default_project or ""
@@ -2426,6 +2611,7 @@ class QuickParser:
         type_text = extracted.get("type", "").strip()
         assignee_text = extracted.get("assignee", "").strip()
         due_text = extracted.get("due", "").strip()
+        start_text = extracted.get("start", "").strip()
         estimate_text = extracted.get("estimate", "").strip()
         label_text = extracted.get("label", "").strip()
         status_text = extracted.get("status", "").strip()
@@ -2490,6 +2676,26 @@ class QuickParser:
         elif not extracted.get("estimate", "").strip():
             estimate_fallback_used = True
 
+        # start date
+        start_iso: Optional[str] = None
+        if start_text:
+            start_iso = self._nl_date_to_iso(start_text)
+            if not start_iso:
+                start_iso = self._heuristic_date(start_text)
+            if start_iso:
+                today = date.today()
+                try:
+                    if date.fromisoformat(start_iso) < today:
+                        start_iso = today.strftime("%Y-%m-%d")
+                except ValueError:
+                    start_iso = today.strftime("%Y-%m-%d")
+            # if start given but due not: compute due from start + estimate
+            if start_iso and not due_iso:
+                due_iso = self._calc_due_from_start(start_iso, estimate_text)
+        if not start_iso and due_iso:
+            # auto-calculate start from due and estimate
+            start_iso = self._calc_start_from_due(due_iso, estimate_text)
+
         # labels
         labels: List[str] = [l.strip() for l in label_text.split(
             ";") if l.strip()] if label_text else []
@@ -2513,6 +2719,8 @@ class QuickParser:
             assignee_account_id=asg_id,
             due_str=due_text,
             due_date=due_iso,
+            start_str=start_text,
+            start_date=start_iso,
             estimate_str=estimate_text,
             labels=labels,
             target_status=target_status,
@@ -2569,6 +2777,7 @@ class QuickParser:
         type_text = merged_tags.get("type", "").strip()
         assignee_text = merged_tags.get("assignee", "").strip()
         due_text = merged_tags.get("due", "").strip()
+        start_text = merged_tags.get("start", "").strip()
         estimate_text = merged_tags.get("estimate", "").strip()
         label_text = merged_tags.get("label", "").strip()
         status_text = merged_tags.get("status", "").strip()
@@ -2610,6 +2819,24 @@ class QuickParser:
         elif not merged_tags.get("estimate", "").strip():
             estimate_fallback_used = True
 
+        # start date
+        start_iso: Optional[str] = None
+        if start_text:
+            start_iso = self._nl_date_to_iso(start_text)
+            if not start_iso:
+                start_iso = self._heuristic_date(start_text)
+            if start_iso:
+                today = date.today()
+                try:
+                    if date.fromisoformat(start_iso) < today:
+                        start_iso = today.strftime("%Y-%m-%d")
+                except ValueError:
+                    start_iso = today.strftime("%Y-%m-%d")
+            if start_iso and not due_iso:
+                due_iso = self._calc_due_from_start(start_iso, estimate_text)
+        if not start_iso and due_iso:
+            start_iso = self._calc_start_from_due(due_iso, estimate_text)
+
         labels: List[str] = [lb.strip() for lb in label_text.split(
             ";") if lb.strip()] if label_text else []
         if not labels:
@@ -2631,6 +2858,8 @@ class QuickParser:
             assignee_account_id=asg_id,
             due_str=due_text,
             due_date=due_iso,
+            start_str=start_text,
+            start_date=start_iso,
             estimate_str=estimate_text,
             labels=labels,
             target_status=target_status,
@@ -2683,6 +2912,17 @@ class SettingsDialog(QDialog):
 
         self.def_estimate = QLineEdit(
             getattr(cfg, "default_estimate", DEFAULT_ESTIMATE))
+
+        self.start_date_field_edit = QLineEdit(
+            getattr(cfg, "start_date_field", "customfield_11011"))
+        self.start_date_field_edit.setPlaceholderText(
+            "e.g. customfield_11011  (leave empty to disable)")
+        self.lbl_start_date_field = QLabel()
+        self.lbl_start_date_field_status = QLabel()
+        self.lbl_start_date_field_status.setWordWrap(True)
+        self.lbl_start_date_field_status.setStyleSheet(
+            "color: #555; font-size: 11px;")
+
         self.def_labels = AutocompleteLineEdit(
             getattr(cfg, "default_labels", ""),
             suggestion_fn=self._label_suggestions, separator=";", parent=self)
@@ -2717,6 +2957,8 @@ class SettingsDialog(QDialog):
         task_form.addRow(self.lbl_asg, self.def_asg)
         task_form.addRow(self.lbl_due, self.def_due_days)
         task_form.addRow(self.lbl_est, self.def_estimate)
+        task_form.addRow(self.lbl_start_date_field, self.start_date_field_edit)
+        task_form.addRow("", self.lbl_start_date_field_status)
         self.lbl_def_labels = QLabel()
         self.lbl_def_status = QLabel()
         task_form.addRow(self.lbl_def_labels, self.def_labels)
@@ -2767,6 +3009,22 @@ class SettingsDialog(QDialog):
         self.lbl_hotkey_shortcut = QLabel()
         app_form.addRow(self.lbl_hotkey_shortcut, self.hotkey_widget)
 
+        self.chk_my_tasks_hotkey = QCheckBox()
+        self.chk_my_tasks_hotkey.setChecked(
+            getattr(cfg, "my_tasks_hotkey_enabled", False))
+        self.lbl_my_tasks_hotkey = QLabel()
+        app_form.addRow(self.lbl_my_tasks_hotkey, self.chk_my_tasks_hotkey)
+
+        self.my_tasks_hotkey_widget = HotkeyWidget(
+            getattr(cfg, "my_tasks_hotkey", "Alt+Shift+T"), self)
+        self.my_tasks_hotkey_widget.setEnabled(
+            self.chk_my_tasks_hotkey.isChecked())
+        self.chk_my_tasks_hotkey.toggled.connect(
+            self.my_tasks_hotkey_widget.setEnabled)
+        self.lbl_my_tasks_hotkey_shortcut = QLabel()
+        app_form.addRow(self.lbl_my_tasks_hotkey_shortcut,
+                        self.my_tasks_hotkey_widget)
+
         self.chk_autostart = QCheckBox()
         self.chk_autostart.setChecked(getattr(cfg, "autostart", False))
         self.chk_autostart.setEnabled(_winreg_ok)
@@ -2805,6 +3063,10 @@ class SettingsDialog(QDialog):
         self.lbl_asg.setText(tr(lang, "default_assignee"))
         self.lbl_due.setText(tr(lang, "default_due_workdays"))
         self.lbl_est.setText(tr(lang, "default_estimate"))
+        self.lbl_start_date_field.setText(
+            tr(lang, "settings_start_date_field"))
+        self.lbl_start_date_field_status.setText(
+            tr(lang, "settings_start_date_field_hint"))
         self.lbl_def_labels.setText(tr(lang, "settings_default_labels"))
         self.lbl_def_status.setText(tr(lang, "settings_default_status"))
         self.lbl_lang.setText(tr(lang, "language"))
@@ -2814,6 +3076,11 @@ class SettingsDialog(QDialog):
         self.lbl_hotkey.setText(tr(lang, "settings_global_hotkey"))
         self.chk_hotkey.setText(tr(lang, "settings_hotkey_enable"))
         self.lbl_hotkey_shortcut.setText(tr(lang, "settings_hotkey_shortcut"))
+        self.lbl_my_tasks_hotkey.setText(tr(lang, "settings_my_tasks_hotkey"))
+        self.chk_my_tasks_hotkey.setText(
+            tr(lang, "settings_my_tasks_hotkey_enable"))
+        self.lbl_my_tasks_hotkey_shortcut.setText(
+            tr(lang, "settings_hotkey_shortcut"))
         self.lbl_autostart.setText(tr(lang, "settings_autostart"))
         self.btn_check.setText(tr(lang, "check_connection"))
         self.btn_save.setText(tr(lang, "save"))
@@ -2900,6 +3167,7 @@ class SettingsDialog(QDialog):
         self.cfg.default_assignee = self.def_asg.text().strip() or "me"
         self.cfg.default_due_workdays = int(self.def_due_days.value())
         self.cfg.default_estimate = self.def_estimate.text().strip() or DEFAULT_ESTIMATE
+        self.cfg.start_date_field = self.start_date_field_edit.text().strip()
         self.cfg.default_labels = self.def_labels.text().strip()
         self.cfg.default_status = self.def_status.text().strip()
 
@@ -2908,19 +3176,22 @@ class SettingsDialog(QDialog):
         self.cfg.inactivity_transparency = self.spin_transparency.value()
         self.cfg.global_hotkey_enabled = self.chk_hotkey.isChecked()
         self.cfg.global_hotkey = self.hotkey_widget.get_hotkey()
+        self.cfg.my_tasks_hotkey_enabled = self.chk_my_tasks_hotkey.isChecked()
+        self.cfg.my_tasks_hotkey = self.my_tasks_hotkey_widget.get_hotkey()
         self.cfg.autostart = self.chk_autostart.isChecked()
         _set_autostart(self.cfg.autostart)
 
         self.accept()
 
     def on_check_connection(self):
+        lang = self.current_lang()
         url = self.url.text().strip()
         user = self.user.text().strip()
         token = self.token.text().strip()
 
         if not url or not user or not token:
-            QMessageBox.warning(self, "Connection",
-                                "Fill Jira URL, User and API Token first.")
+            QMessageBox.warning(self, tr(lang, "check_connection"),
+                                tr(lang, "connection_fill_required"))
             return
 
         try:
@@ -2928,10 +3199,37 @@ class SettingsDialog(QDialog):
             jira = JIRA(options={"server": url}, basic_auth=(user, token))
             me = jira.myself()
             name = me.get("displayName") or me.get("name") or "unknown"
-            QMessageBox.information(self, "Connection OK",
-                                    f"Connected successfully.\nUser: {name}")
+            msg = tr(lang, "connection_ok_message").format(user=name)
+
+            # Check custom start-date field availability
+            field_id = self.start_date_field_edit.text().strip()
+            if field_id:
+                try:
+                    available_fields = {f["id"] for f in jira.fields()}
+                    if field_id in available_fields:
+                        field_status = tr(
+                            lang, "settings_start_date_field_available")
+                        status_color = "#2a7a2a"
+                    else:
+                        field_status = tr(
+                            lang, "settings_start_date_field_missing")
+                        status_color = "#a03030"
+                    self.lbl_start_date_field_status.setText(field_status)
+                    self.lbl_start_date_field_status.setStyleSheet(
+                        f"color: {status_color}; font-size: 11px;")
+                    msg += f"\n\n{field_status}"
+                except Exception:
+                    pass
+            else:
+                skipped = tr(lang, "settings_start_date_field_skipped")
+                self.lbl_start_date_field_status.setText(skipped)
+                self.lbl_start_date_field_status.setStyleSheet(
+                    "color: #555; font-size: 11px;")
+
+            QMessageBox.information(self, tr(lang, "connection_ok_title"), msg)
         except Exception as e:
-            QMessageBox.critical(self, "Connection failed", str(e))
+            QMessageBox.critical(
+                self, tr(lang, "connection_failed_title"), str(e))
 
 
 # --------------------------- UI: Review Table ---------------------------
@@ -3051,6 +3349,7 @@ class ReviewTaskCard(QFrame):
         self.task = task
         self.jira = jira
         self.cfg = cfg
+        self._show_start = bool(getattr(cfg, "start_date_field", "").strip())
         lang = getattr(cfg, "language", "en")
         self.setFrameShape(QFrame.StyledPanel)
         self.setObjectName("taskCard")
@@ -3115,7 +3414,7 @@ class ReviewTaskCard(QFrame):
         project_row.addWidget(self.project_combo)
         root.addLayout(project_row)
 
-        # --- Meta row (Type / Assignee / Due) ---
+        # --- Meta row 1: Type / Assignee ---
         meta = QHBoxLayout()
 
         self.type_combo = QComboBox()
@@ -3153,9 +3452,35 @@ class ReviewTaskCard(QFrame):
         meta.addWidget(QLabel(tr(lang, "review_assignee")))
         meta.addWidget(self.assignee_edit)
 
+        meta.setSpacing(10)
+        meta.setStretch(1, 1)
+        meta.setStretch(3, 1)
+        root.addLayout(meta)
+
+        # --- Meta row 2: Start / Estimate / Due ---
+        dates_row = QHBoxLayout()
+
+        # Start date (only if custom field is configured)
+        if self._show_start:
+            self.start_edit = QDateEdit()
+            self.start_edit.setCalendarPopup(True)
+            self.start_edit.setDisplayFormat("yyyy-MM-dd")
+            start_iso = getattr(task, "start_date", None) or ""
+            if start_iso:
+                try:
+                    sd = date.fromisoformat(start_iso)
+                    self.start_edit.setDate(QDate(sd.year, sd.month, sd.day))
+                except ValueError:
+                    self.start_edit.setDate(QDate.currentDate())
+            else:
+                self.start_edit.setDate(QDate.currentDate())
+
+            dates_row.addWidget(QLabel(tr(lang, "review_start")))
+            dates_row.addWidget(self.start_edit)
+
+        # Estimate
         self.estimate_edit = QLineEdit(
-            getattr(task, "estimate_str", "") or getattr(
-                self.task, "estimate_str", "") or DEFAULT_ESTIMATE
+            getattr(task, "estimate_str", "") or DEFAULT_ESTIMATE
         )
         if getattr(task, "estimate_fallback_used", False):
             self._mark_fallback(
@@ -3163,26 +3488,40 @@ class ReviewTaskCard(QFrame):
                 "Estimate was invalid, default value was applied"
             )
         self.estimate_edit.setPlaceholderText("30m / 2h / 1d / 1w")
-        meta.addWidget(QLabel(tr(lang, "review_estimate")))
-        meta.addWidget(self.estimate_edit)
+        dates_row.addWidget(QLabel(tr(lang, "review_estimate")))
+        dates_row.addWidget(self.estimate_edit)
 
-        self.due_edit = QLineEdit(task.due_date or "")
+        # Due date
+        self.due_edit = QDateEdit()
+        self.due_edit.setCalendarPopup(True)
+        self.due_edit.setDisplayFormat("yyyy-MM-dd")
+        due_iso = task.due_date or ""
+        if due_iso:
+            try:
+                dd = date.fromisoformat(due_iso)
+                self.due_edit.setDate(QDate(dd.year, dd.month, dd.day))
+            except ValueError:
+                self.due_edit.setDate(QDate.currentDate().addDays(3))
+        else:
+            self.due_edit.setDate(QDate.currentDate().addDays(3))
         if getattr(task, "due_parse_failed", False):
             self._mark_fallback(
                 self.due_edit,
                 "Date was not recognized, default due date was applied"
             )
-        self.due_edit.setPlaceholderText(
-            "YYYY-MM-DD / tomorrow / 15 december 2026 / 15 декабря 2026")
-        meta.addWidget(QLabel(tr(lang, "review_due")))
-        meta.addWidget(self.due_edit)
 
-        meta.setSpacing(10)
-        meta.setStretch(1, 1)
-        meta.setStretch(3, 1)
-        meta.setStretch(5, 1)
+        dates_row.addWidget(QLabel(tr(lang, "review_due")))
+        dates_row.addWidget(self.due_edit)
 
-        root.addLayout(meta)
+        dates_row.setSpacing(10)
+        if self._show_start:
+            dates_row.setStretch(1, 1)  # start_edit
+            dates_row.setStretch(3, 1)  # estimate_edit
+            dates_row.setStretch(5, 1)  # due_edit
+        else:
+            dates_row.setStretch(1, 1)  # estimate_edit
+            dates_row.setStretch(3, 1)  # due_edit
+        root.addLayout(dates_row)
 
         # --- Labels & Status row ---
         ls_row = QHBoxLayout()
@@ -3215,8 +3554,76 @@ class ReviewTaskCard(QFrame):
             self.project_combo.currentIndexChanged.connect(
                 self.refresh_issue_types)
 
+        if self._show_start:
+            self.estimate_edit.textChanged.connect(self._on_estimate_changed)
+            self.due_edit.dateChanged.connect(self._on_due_changed)
         self.chk_add_to_jira.toggled.connect(self.on_include_toggled)
         self.on_include_toggled(self.chk_add_to_jira.isChecked())
+
+    # ------------------------------------------------------------------ #
+    # helpers                                                              #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _qdate_to_iso(qd: QDate) -> str:
+        return f"{qd.year():04d}-{qd.month():02d}-{qd.day():02d}"
+
+    @staticmethod
+    def _iso_to_qdate(iso: str) -> Optional[QDate]:
+        try:
+            d = date.fromisoformat(iso)
+            return QDate(d.year, d.month, d.day)
+        except (ValueError, TypeError):
+            return None
+
+    def _on_estimate_changed(self, text: str):
+        """When estimate changes: recalculate start from due+estimate.
+        If start would be before today, keep start=today and push due forward."""
+        if not self._show_start:
+            return
+        due_iso = self._qdate_to_iso(self.due_edit.date())
+        estimate = text.strip() or DEFAULT_ESTIMATE
+        new_start_iso = QuickParser._calc_start_from_due(due_iso, estimate)
+        today = date.today()
+        try:
+            start_d = date.fromisoformat(new_start_iso)
+        except ValueError:
+            start_d = today
+        if start_d <= today:
+            # start pinned to today — push due date forward instead
+            new_start_iso = today.strftime("%Y-%m-%d")
+            new_due_iso = QuickParser._calc_due_from_start(
+                new_start_iso, estimate)
+            qd = self._iso_to_qdate(new_due_iso)
+            if qd:
+                self.due_edit.blockSignals(True)
+                self.due_edit.setDate(qd)
+                self.due_edit.blockSignals(False)
+        qs = self._iso_to_qdate(new_start_iso)
+        if qs:
+            self.start_edit.blockSignals(True)
+            self.start_edit.setDate(qs)
+            self.start_edit.blockSignals(False)
+
+    def _on_due_changed(self, _: QDate):
+        """When due changes manually: recalculate start."""
+        if not self._show_start:
+            return
+        due_iso = self._qdate_to_iso(self.due_edit.date())
+        estimate = self.estimate_edit.text().strip() or DEFAULT_ESTIMATE
+        new_start_iso = QuickParser._calc_start_from_due(due_iso, estimate)
+        today = date.today()
+        try:
+            start_d = date.fromisoformat(new_start_iso)
+        except ValueError:
+            start_d = today
+        if start_d < today:
+            new_start_iso = today.strftime("%Y-%m-%d")
+        qs = self._iso_to_qdate(new_start_iso)
+        if qs:
+            self.start_edit.blockSignals(True)
+            self.start_edit.setDate(qs)
+            self.start_edit.blockSignals(False)
 
     def on_include_toggled(self, checked: bool):
         self.edit_summary.setEnabled(checked)
@@ -3224,9 +3631,11 @@ class ReviewTaskCard(QFrame):
         self.project_combo.setEnabled(checked)
         self.type_combo.setEnabled(checked)
         self.assignee_edit.setEnabled(checked)
+        if self._show_start:
+            self.start_edit.setEnabled(checked)
+        self.estimate_edit.setEnabled(checked)
         self.due_edit.setEnabled(checked)
         self.raw_label.setEnabled(checked)
-        self.estimate_edit.setEnabled(checked)
         self.labels_edit.setEnabled(checked)
         self.status_edit.setEnabled(checked)
 
@@ -3254,7 +3663,9 @@ class ReviewTaskCard(QFrame):
         summary = self.edit_summary.text().strip()
         description = self.edit_description.toPlainText().strip()
         assignee = self.assignee_edit.text().strip()
-        due = self.due_edit.text().strip()
+        due = self._qdate_to_iso(self.due_edit.date())
+        start = self._qdate_to_iso(
+            self.start_edit.date()) if self._show_start else None
         raw = self.raw_label.text()
         estimate = self.estimate_edit.text().strip()
 
@@ -3278,6 +3689,8 @@ class ReviewTaskCard(QFrame):
             assignee_account_id=None,
             due_str=due,
             due_date=due,
+            start_str=start,
+            start_date=start,
             estimate_str=estimate,
             labels=labels,
             target_status=target_status,
@@ -3463,6 +3876,12 @@ class MainWindow(QMainWindow):
         act.triggered.connect(slot)
         return act
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+            return
+        super().keyPressEvent(event)
+
     def closeEvent(self, event):
         self._save_geometry()
         event.ignore()
@@ -3630,10 +4049,15 @@ class MainWindow(QMainWindow):
             if not target_status:
                 target_status = getattr(self.cfg, "default_status", "").strip()
 
+            start_iso = getattr(r, "start_date", None) or None
+            start_field = getattr(
+                self.cfg, "start_date_field", "").strip() or None
+
             try:
                 key = self.jira.create_issue(
                     r.project, r.summary, r.issue_type, assignee_id, due_iso,
-                    r.description, estimate_text, labels or None
+                    r.description, estimate_text, labels or None,
+                    start_iso, start_field
                 )
                 if target_status:
                     self.jira.transition_issue(key, target_status)
@@ -3823,6 +4247,308 @@ class TaskHistoryDialog(QDialog):
         layout.addLayout(h)
 
 
+# ──────────────────────────── My Tasks ────────────────────────────────
+
+def group_my_tasks(tasks: List[dict], today: date) -> Dict[str, List[dict]]:
+    """Split tasks into overdue / approaching / next_month buckets.
+
+    approaching — work must start today or has already started:
+      * with estimate: ``_add_business_days(due, -ceil(est_days)) <= today``
+      * without estimate: due within 7 calendar days
+    next_month — due within 30 calendar days (not already in other groups)
+    """
+    overdue: List[dict] = []
+    approaching: List[dict] = []
+    next_month: List[dict] = []
+    for t in tasks:
+        try:
+            due = date.fromisoformat(t["due_date"])
+        except (KeyError, ValueError, TypeError):
+            continue
+        if due < today:
+            overdue.append(t)
+            continue
+        est_secs = t.get("estimate_seconds") or 0
+        if est_secs > 0:
+            est_days = math.ceil(est_secs / 28800)  # 8 h per working day
+            work_start = QuickParser._add_business_days(due, -est_days)
+            urgent = work_start <= today
+        else:
+            urgent = due <= today + timedelta(days=7)
+        if urgent:
+            approaching.append(t)
+        elif due <= today + timedelta(days=30):
+            next_month.append(t)
+    return {"overdue": overdue, "approaching": approaching, "next_month": next_month}
+
+
+class CheckableTypeButton(QPushButton):
+    """Drop-down button whose menu items are checkable (issue-type filter)."""
+
+    selection_changed = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._menu = QMenu(self)
+        self.setMenu(self._menu)
+        self.setText("Types: all")
+
+    def set_items(self, items: List[str], hidden: set):
+        self._menu.clear()
+        for item in items:
+            act = QAction(item, self._menu)
+            act.setCheckable(True)
+            act.setChecked(item not in hidden)
+            act.triggered.connect(self._on_toggled)
+            self._menu.addAction(act)
+        self._refresh_label()
+
+    def hidden_types(self) -> set:
+        return {a.text() for a in self._menu.actions() if not a.isChecked()}
+
+    def _on_toggled(self):
+        self._refresh_label()
+        self.selection_changed.emit()
+
+    def _refresh_label(self):
+        actions = self._menu.actions()
+        total = len(actions)
+        if total == 0:
+            self.setText("Types: all")
+            return
+        visible = sum(1 for a in actions if a.isChecked())
+        self.setText(
+            f"Types: {visible}/{total}" if visible < total
+            else f"Types: all ({total})"
+        )
+
+
+class MyTasksWorker(QThread):
+    """Fetch my tasks in a background thread."""
+
+    result_ready = Signal(list)
+    failed = Signal(str)
+
+    def __init__(self, jira: JiraClient, cfg):
+        super().__init__()
+        self._jira = jira
+        self._cfg = cfg
+
+    def run(self):
+        try:
+            field = getattr(self._cfg, "start_date_field", "").strip()
+            tasks = self._jira.fetch_my_tasks(field)
+            self.result_ready.emit(tasks)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class MyTasksDialog(QDialog):
+    """Mini-board: open tasks assigned to me, grouped by urgency."""
+
+    def __init__(self, cfg, jira: Optional[JiraClient],
+                 save_fn=None, parent=None):
+        super().__init__(parent)
+        self._cfg = cfg
+        self._jira = jira
+        self._save_fn = save_fn
+        self._tasks: List[dict] = []
+        self._worker: Optional[MyTasksWorker] = None
+        lang = getattr(cfg, "language", "en")
+
+        self.setWindowTitle(tr(lang, "my_tasks_title"))
+        self.resize(780, 560)
+        self.setWindowFlags(
+            self.windowFlags() | Qt.WindowMaximizeButtonHint)
+
+        layout = QVBoxLayout(self)
+
+        # ── top bar: type filter + refresh ───────────────────────────
+        top = QHBoxLayout()
+        top.addWidget(QLabel(tr(lang, "my_tasks_filter_label")))
+
+        hidden_raw = getattr(cfg, "my_tasks_hidden_types", "")
+        self._hidden_types: set = {
+            t.strip() for t in hidden_raw.split(",") if t.strip()
+        }
+        self._type_btn = CheckableTypeButton(self)
+        self._type_btn.selection_changed.connect(self._on_filter_changed)
+        top.addWidget(self._type_btn)
+        top.addStretch()
+
+        self._btn_refresh = QPushButton(tr(lang, "my_tasks_refresh"))
+        self._btn_refresh.clicked.connect(self._load)
+        top.addWidget(self._btn_refresh)
+        layout.addLayout(top)
+
+        # ── content ──────────────────────────────────────────────────
+        self._collapsed: Dict[str, bool] = {}
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.NoFrame)
+        self._content = QWidget()
+        self._scroll.setWidget(self._content)
+        layout.addWidget(self._scroll)
+
+        # ── bottom ────────────────────────────────────────────────────
+        h = QHBoxLayout()
+        h.addStretch()
+        btn_close = QPushButton(tr(lang, "my_tasks_close"))
+        btn_close.clicked.connect(self.accept)
+        h.addWidget(btn_close)
+        layout.addLayout(h)
+
+        self._load()
+
+    # ── status helpers ─────────────────────────────────────────────
+
+    def _set_status(self, text: str, error: bool = False):
+        """Replace scroll content with a single status/message label."""
+        content = QWidget()
+        vl = QVBoxLayout(content)
+        vl.setContentsMargins(12, 12, 12, 12)
+        lbl = QLabel(text)
+        lbl.setWordWrap(True)
+        if error:
+            lbl.setStyleSheet("color: red;")
+        vl.addWidget(lbl)
+        vl.addStretch()
+        self._scroll.setWidget(content)
+        self._content = content
+
+    # ── loading ────────────────────────────────────────────────────
+
+    def _load(self):
+        lang = getattr(self._cfg, "language", "en")
+        if self._jira is None:
+            self._set_status(tr(lang, "my_tasks_no_jira"))
+            return
+        self._set_status(tr(lang, "my_tasks_loading"))
+        self._btn_refresh.setEnabled(False)
+        self._worker = MyTasksWorker(self._jira, self._cfg)
+        self._worker.result_ready.connect(self._on_loaded)
+        self._worker.failed.connect(self._on_failed)
+        self._worker.start()
+
+    def _on_loaded(self, tasks: list):
+        self._tasks = tasks
+        self._btn_refresh.setEnabled(True)
+        types = sorted({
+            t.get("issue_type", "") for t in tasks if t.get("issue_type")
+        })
+        self._type_btn.set_items(types, self._hidden_types)
+        self._render()
+
+    def _on_failed(self, msg: str):
+        lang = getattr(self._cfg, "language", "en")
+        self._set_status(
+            tr(lang, "my_tasks_error").format(msg=msg), error=True)
+        self._btn_refresh.setEnabled(True)
+
+    # ── filter ────────────────────────────────────────────────────
+
+    def _on_filter_changed(self):
+        self._hidden_types = self._type_btn.hidden_types()
+        self._cfg.my_tasks_hidden_types = ",".join(
+            sorted(self._hidden_types))
+        if self._save_fn:
+            try:
+                self._save_fn()
+            except Exception:
+                pass
+        self._render()
+
+    # ── render ────────────────────────────────────────────────────
+
+    def _render(self):
+        lang = getattr(self._cfg, "language", "en")
+        today = date.today()
+        hidden = self._type_btn.hidden_types()
+        visible = [
+            t for t in self._tasks
+            if t.get("issue_type", "") not in hidden
+        ]
+        grouped = group_my_tasks(visible, today)
+
+        groups = [
+            ("overdue",     tr(lang, "my_tasks_group_overdue"),     "#b71c1c"),
+            ("approaching", tr(lang, "my_tasks_group_approaching"),  "#e65100"),
+            ("next_month",  tr(lang, "my_tasks_group_next_month"),   "#1565c0"),
+        ]
+
+        content = QWidget()
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(8, 8, 8, 8)
+        cl.setSpacing(2)
+
+        any_shown = False
+        for key, title, color in groups:
+            bucket = grouped.get(key, [])
+            if not bucket:
+                continue
+            any_shown = True
+            collapsed = self._collapsed.get(key, False)
+
+            # ── section header (clickable) ──────────────────────────
+            arrow = "▶" if collapsed else "▼"
+            btn = QPushButton(f"{arrow}  {title}  ({len(bucket)})")
+            btn.setFlat(True)
+            btn.setStyleSheet(
+                f"QPushButton {{ color: {color}; font-size: 13px;"
+                f" font-weight: bold; text-align: left;"
+                f" border: none; padding: 8px 4px 4px 4px; }}"
+                f"QPushButton:hover {{ background: rgba(0,0,0,15); }}"
+            )
+            btn.setCursor(Qt.PointingHandCursor)
+            cl.addWidget(btn)
+
+            # ── tasks container ─────────────────────────────────────
+            container = QWidget()
+            tl = QVBoxLayout(container)
+            tl.setContentsMargins(20, 0, 0, 6)
+            tl.setSpacing(3)
+            for t in bucket:
+                tkey = t["key"]
+                url = t["url"]
+                summary = escape(t["summary"])
+                due = escape(t.get("due_date", ""))
+                lbl = QLabel(
+                    f'<a href="{url}">{escape(tkey)}</a>'
+                    f' \u2014 {summary}'
+                    f' <span style="color:#888;">'
+                    f'\u2014 {escape(tr(lang, "my_tasks_due"))} {due}'
+                    f'</span>'
+                )
+                lbl.setOpenExternalLinks(True)
+                lbl.setTextInteractionFlags(Qt.TextBrowserInteraction)
+                lbl.setTextFormat(Qt.RichText)
+                lbl.setWordWrap(True)
+                tl.addWidget(lbl)
+            container.setVisible(not collapsed)
+            cl.addWidget(container)
+
+            # wire toggle — capture variables with default args
+            def _make_toggle(k, c, b, ttl, cnt):
+                def _toggle():
+                    now_visible = c.isVisible()
+                    c.setVisible(not now_visible)
+                    self._collapsed[k] = now_visible
+                    new_arrow = "▶" if now_visible else "▼"
+                    b.setText(f"{new_arrow}  {ttl}  ({cnt})")
+                return _toggle
+            btn.clicked.connect(_make_toggle(
+                key, container, btn, title, len(bucket)))
+
+        if not any_shown:
+            lbl = QLabel(tr(lang, "my_tasks_empty"))
+            lbl.setStyleSheet("color: #555; margin-top: 20px;")
+            cl.addWidget(lbl)
+
+        cl.addStretch()
+        self._scroll.setWidget(content)
+        self._content = content
+
+
 class TrayApp:
     """System-tray controller that owns the :class:`MainWindow` lifecycle.
 
@@ -3849,8 +4575,10 @@ class TrayApp:
         self.act_open = QAction(menu)
         self.act_settings = QAction(menu)
         self.act_history = QAction(menu)
+        self.act_my_tasks = QAction(menu)
         self.act_about = QAction(menu)
         self.act_quit = QAction(menu)
+        menu.addAction(self.act_my_tasks)
         menu.addAction(self.act_open)
         menu.addAction(self.act_settings)
         menu.addAction(self.act_history)
@@ -3864,17 +4592,32 @@ class TrayApp:
         self.act_open.triggered.connect(self.show_window)
         self.act_settings.triggered.connect(self._on_settings)
         self.act_history.triggered.connect(self._on_history)
+        self.act_my_tasks.triggered.connect(self._on_my_tasks)
         self.act_about.triggered.connect(self._on_about)
         self.act_quit.triggered.connect(self.app.quit)
         self.app.aboutToQuit.connect(self._on_quit)
         self.tray.show()
 
+        self._my_tasks_hotkey_manager = HotkeyManager()
+        self._apply_my_tasks_hotkey()
+
         self.apply_language()
 
     def apply_language(self):
-        lang = getattr(self.cfg_mgr.config, "language", "en")
+        cfg = self.cfg_mgr.config
+        lang = getattr(cfg, "language", "en")
         self.tray.setToolTip(tr(lang, "tray_tooltip"))
-        self.act_open.setText(tr(lang, "tray_open"))
+
+        open_text = tr(lang, "tray_open")
+        if getattr(cfg, "global_hotkey_enabled", False):
+            open_text += f"  ({getattr(cfg, 'global_hotkey', 'Alt+Shift+M')})"
+        self.act_open.setText(open_text)
+
+        my_tasks_text = tr(lang, "tray_my_tasks")
+        if getattr(cfg, "my_tasks_hotkey_enabled", False):
+            my_tasks_text += f"  ({getattr(cfg, 'my_tasks_hotkey', 'Alt+Shift+T')})"
+        self.act_my_tasks.setText(my_tasks_text)
+
         self.act_settings.setText(tr(lang, "tray_settings"))
         self.act_history.setText(tr(lang, "tray_history"))
         self.act_about.setText(tr(lang, "tray_about"))
@@ -3882,6 +4625,15 @@ class TrayApp:
 
     def _on_history(self):
         dlg = TaskHistoryDialog(self.cfg_mgr.config, self.window)
+        dlg.exec()
+
+    def _on_my_tasks(self):
+        dlg = MyTasksDialog(
+            self.cfg_mgr.config,
+            self.window.jira,
+            save_fn=self.cfg_mgr.save,
+            parent=self.window,
+        )
         dlg.exec()
 
     def _on_about(self):
@@ -3892,9 +4644,18 @@ class TrayApp:
             tr(lang, "about_text"),
         )
 
+    def _apply_my_tasks_hotkey(self):
+        self._my_tasks_hotkey_manager.unregister(self.app)
+        cfg = self.cfg_mgr.config
+        if getattr(cfg, "my_tasks_hotkey_enabled", False):
+            hotkey = getattr(cfg, "my_tasks_hotkey", "Alt+Shift+T")
+            self._my_tasks_hotkey_manager.register(
+                self.app, hotkey, self._on_my_tasks)
+
     def _on_settings(self):
         self.window.on_settings()
         self.apply_language()
+        self._apply_my_tasks_hotkey()
 
     def on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason):
         if reason in (QSystemTrayIcon.Trigger, QSystemTrayIcon.DoubleClick):
@@ -3902,6 +4663,7 @@ class TrayApp:
 
     def _on_quit(self):
         self.window._hotkey_manager.unregister(self.app)
+        self._my_tasks_hotkey_manager.unregister(self.app)
 
     def show_window(self):
         self.window.setWindowOpacity(1.0)
